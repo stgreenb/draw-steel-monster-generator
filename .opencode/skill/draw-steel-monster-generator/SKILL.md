@@ -1,0 +1,844 @@
+---
+name: draw-steel-monster-generator
+description: Generate Draw Steel TTRPG monsters with 100% formula compliance. Creates complete stat blocks matching official MCDM格式.
+agent: general-purpose
+compatibility:
+  - opencode-agent
+  - claude-code
+  - claude-web
+---
+
+# Draw Steel Monster Generator
+
+Generate Draw Steel TTRPG monsters that strictly conform to official MCDM stat block format from Monster Basics chapter.
+
+## Quick Start
+
+**Input Format:** `"Create a [Level] [Creature Name], [Organization], [Role]"`
+
+**Examples:**
+- `"Create a Level 3 Gremlin, Minion Harrier"`
+- `"Create a Level 5 Red Dragon, Solo Brute"`
+- `"Create a Level 1 Kobold Veles, Minion Harrier"`
+
+## Step 1: Calculate Stats
+
+Use these formulas **exactly**. All values use `ceil()` (round UP to nearest whole number).
+
+### Encounter Value (EV)
+```
+EV = ceil(((2 × Level) + 4) × Organization_Modifier)
+```
+
+### Stamina
+```
+Stamina = ceil(((10 × Level) + Role_Stamina_Modifier) × Organization_Modifier)
+```
+
+### Damage (all tiers)
+```
+Damage = ceil((4 + Level + Role_Damage_Modifier) × Tier_Modifier)
+```
+
+**For Horde and Minion:** Divide damage by 2
+
+### Free Strike
+```
+Free Strike = Damage at Tier 1 (always!)
+```
+
+## Step 2: Lookup Tables
+
+### Organization Modifiers
+
+| Organization | EV Mod | Stamina Mod | Damage |
+|--------------|--------|-------------|--------|
+| Minion | 0.5 | 0.5 | ÷2 |
+| Horde | 0.5 | 0.5 | ÷2 |
+| Platoon | 1.0 | 1.0 | 1.0 |
+| Elite | 2.0 | 2.0 | 2.0 |
+| Leader | 2.0 | 2.0 | 2.0 |
+| Solo | 6.0 | 6.0 | 6.0 |
+
+### Role Modifiers
+
+| Role | Stamina Mod | Damage Mod | Power Roll Characteristic |
+|------|-------------|------------|---------------------------|
+| Ambusher | +20 | +1 | Agility |
+| Artillery | +10 | +1 | Reason |
+| Brute | +30 | +1 | Might |
+| Controller | +10 | +0 | Reason |
+| Defender | +30 | +0 | Might |
+| Harrier | +20 | +0 | Agility |
+| Hexer | +10 | +0 | Reason |
+| Mount | +20 | +0 | Might or Agility |
+| Support | +20 | +0 | Reason |
+
+### Tier Multipliers
+
+| Tier | Roll Range | Multiplier |
+|------|------------|------------|
+| Tier 1 | ≤11 | 0.6 |
+| Tier 2 | 12-16 | 1.1 |
+| Tier 3 | 17+ | 1.4 |
+
+## Step 2b: Characteristics (from The Basics Official Rules)
+
+Each creature has **five characteristics** from **-5 to +5**:
+
+| Characteristic | Abbreviation | What It Represents |
+|----------------|--------------|-------------------|
+| **Might** | M | Strength and brawn - breaking doors, swinging axes, standing during earthquakes, hurling allies |
+| **Agility** | A | Coordination and nimbleness - backflipping, shooting crossbows, dodging explosions, picking pockets |
+| **Reason** | R | Logical mind and education - solving puzzles, recalling lore, deciphering codes, psionic powers |
+| **Intuition** | I | Instincts and experience - recognizing sounds, reading people, calming animals, tracking monsters |
+| **Presence** | P | Force of personality - lying, convincing crowds, impressing royalty, casting spells through song |
+
+### Key Rules
+- **0 = Average human** - Most creatures have characteristics around 0
+- **-5 to +5 range** - -5 is very weak (baby bunny), +5 is very powerful (ancient dragon)
+- **Power Rolls:** Roll 2d10 + characteristic
+- **Tier outcomes:**
+  - Tier 1: ≤11 (worst outcome)
+  - Tier 2: 12-16 (average outcome)
+  - Tier 3: 17+ (best outcome)
+- **Natural 19-20:** Always tier 3, can be a critical hit
+
+### Edges and Banes (from Official Rules)
+- **Edge:** Situational advantage, +2 bonus to roll
+- **Double Edge:** Automatic tier upgrade (don't add characteristic)
+- **Bane:** Situational disadvantage, -2 penalty
+- **Double Bane:** Automatic tier downgrade (don't subtract characteristic)
+- **Cancel out:** One edge + one bane = normal roll
+
+### Important Rounding Rule
+**Always round DOWN** when dividing (for Horde/Minion damage).
+
+### Potencies (from Classes Official Rules)
+
+Potencies determine if a target can resist conditions and effects. This is **critical** for monster abilities!
+
+#### What Are Potencies?
+- An effect with a potency applies only if the effect's **potency value is HIGHER** than the target's indicated characteristic score
+- Target **resists** if their characteristic score >= the potency value
+- Target **suffers** the effect if their characteristic score < the potency value
+
+#### Potency Format
+```
+[Characteristic] < [Value]
+```
+
+Written as:
+- `M < WEAK` or `M < 0` (Might < Weak)
+- `A < AVERAGE` or `A < 1` (Agility < Average)
+- `R < STRONG` or `R < 2` (Reason < Strong)
+
+#### How to Read Potencies
+Say: **"If the target's [characteristic] is less than [potency value], they [suffer effect]"**
+
+Example: `A < 1, prone` means "If the target's Agility is less than 1, they fall prone."
+
+#### Monster Potency Values (Official Formula from Monster Basics.md)
+
+Monsters use the **characteristic used in their power roll** to determine potencies using this formula:
+
+| Tier | Formula | Example (+3 char) |
+|------|---------|-------------------|
+| Tier 1 | Highest − 2 | +1 |
+| Tier 2 | Highest − 1 | +2 |
+| Tier 3 | Highest | +3 |
+
+**Formula:**
+- Tier 1: Characteristic − 2
+- Tier 2: Characteristic − 1
+- Tier 3: Characteristic
+
+**Leader/Solo Bonus:** Add +1 to all potencies (max 6)
+
+#### Potency Examples
+
+**Minion Harrier (Agility +2):**
+- Weak: 0, Average: 1, Strong: 2
+- Written: `A < 0`, `A < 1`, `A < 2`
+
+**Solo Brute (Might +3):**
+- Weak: 1, Average: 2, Strong: 3
+- Written: `M < 1`, `M < 2`, `M < 3`
+
+**Elite Controller (Reason +2):**
+- Weak: 0, Average: 1, Strong: 2
+- Written: `R < 0`, `R < 1`, `R < 2`
+
+#### Malice and Potencies
+Monsters can spend **3 Malice** on "Brutal Effectiveness" to increase their next ability's potency by 1.
+
+#### Common Potency Effects in Monsters
+- `A < 1, prone` - Knock prone if target's Agility < 1
+- `M < 2, slowed` - Slow if target's Might < 2
+- `R < 0, dazed` - Daze if target's Reason < 0
+- `I < 1, weakened` - Weaken if target's Intuition < 1
+- `P < 1, frightened` - Frighten if target's Presence < 1
+
+### Echelon-Based Characteristic Scaling (from Monster Basics.md line 1376)
+
+A monster's highest characteristic and power roll bonus is equal to **1 + their echelon**:
+
+| Level Range | Echelon | Highest Characteristic |
+|-------------|---------|------------------------|
+| Level 1 | 0 | +1 |
+| Level 2-4 | 1 | +2 |
+| Level 5-7 | 2 | +3 |
+| Level 8-10 | 3 | +4 |
+
+**Leader/Solo Bonus:** Add +1 to highest characteristic (max +5)
+
+### Strike Bonus (from Monster Basics.md line 1360)
+
+For abilities with the **Strike** keyword, add the monster's highest characteristic to the damage:
+
+```
+Final_Damage = Base_Damage + Highest_Characteristic
+```
+
+**Example:** Level 3 Brute (Might +2) at Tier 2:
+- Base damage: 8
+- Strike bonus: +2
+- Final damage: 10
+
+### Target Counts (from Monster Basics.md line 13780)
+
+| Organization | Normal Targets | Notes |
+|--------------|----------------|-------|
+| Minion | 1 | |
+| Horde | 1 | |
+| Platoon | 1 | |
+| Elite | 2 | |
+| Leader | 2 | |
+| Solo | 2 | |
+
+### Target Damage Scaling (from Monster Basics.md line 13781)
+
+When targeting more or fewer creatures than normal:
+
+| Target Change | Damage Multiplier |
+|---------------|-------------------|
+| -1 target | 1.2x |
+| Normal | 1.0x |
+| +1 target | 0.8x |
+| +2+ targets | 0.5x |
+
+**Example:** Elite Controller (2 targets) targeting 3 creatures:
+- Base damage: 10
+- Multiplier: 0.8x
+- Final damage: 8 per tier
+
+## Step 3: Size and Speed (from Bestiary Analysis)
+
+### Size by Organization (Most Common)
+
+| Organization | Most Common Size | Alternatives |
+|--------------|-----------------|--------------|
+| Minion | 1M (Medium) | 1S, 1T (Tiny) |
+| Horde | 1M (Medium) | 1S, 1L |
+| Platoon | 1M (Medium) | 1L |
+| Elite | 1M (Medium) | 1L, 2-4 |
+| Leader | 1M (Medium) | 1S, 1L, 2-5 |
+| Solo | 1M or 1L | 2-5, 3 |
+
+**Note:** Contrary to expectations, MCDM uses 1M (Medium) for most minions, not 1S (Small). Only use 1S for clearly small creatures like tiny fey or insects.
+
+### Speed by Role (from Bestiary Data)
+
+| Role | Avg Speed | Common Range |
+|------|-----------|--------------|
+| Minion Harrier | 6-7 | 6-8 |
+| Elite Harrier | 7-8 | 6-10 |
+| Platoon Harrier | 7 | 7-8 |
+| Minion Ambusher | 6 | 5-10 |
+| Elite Ambusher | 7-8 | 5-10 |
+| Solo | 8 | 3-15 |
+| Mount (Platoon) | 8 | 5-10 |
+| Artillery/Controller/Hexer | 5-6 | 5-8 |
+| Brute (Elite) | 6 | 5-8 |
+| Defender (Elite) | 6 | 5-7 |
+| Support (Elite) | 5-6 | 5-8 |
+
+### Stability (from Bestiary)
+
+| Stability | Percentage |
+|-----------|------------|
+| 0 | 57.5% (most common) |
+| 1 | 11.5% |
+| 2 | 16.8% |
+| 3+ | 14.2% |
+
+**Default to Stability 0** unless the creature has a defensive theme.
+
+## Step 4: Characteristics by Echelon and Role
+
+Use **echelon-based scaling** for the highest characteristic. Secondary characteristics can vary.
+
+### Echelon Reference
+
+| Level Range | Echelon | Highest Characteristic | Leader/Solo Bonus |
+|-------------|---------|------------------------|-------------------|
+| Level 1 | 0 | +1 | +2 |
+| Level 2-4 | 1 | +2 | +3 |
+| Level 5-7 | 2 | +3 | +4 |
+| Level 8-10 | 3 | +4 | +5 |
+
+### Minion Harrier (Level 1-4, Echelon 0-1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +0 to +1 | +1 to +2 | -1 to +0 | 0 to +1 | -1 to +0 |
+
+### Minion Brute (Level 1-4, Echelon 0-1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +1 to +2 | 0 to +1 | -2 to 0 | -1 to 0 | -1 to +0 |
+
+### Minion Hexer (Level 1-4, Echelon 0-1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| -1 to +0 | +1 to +2 | +0 to +1 | 0 to +1 | 0 to +1 |
+
+### Elite Brute (Level 2-4, Echelon 1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +2 to +3 | 0 to +1 | -2 to -1 | 0 to +1 | 0 to +0 |
+
+### Elite Harrier (Level 2-4, Echelon 1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +1 to +2 | +2 to +3 | -1 to +1 | +1 to +2 | 0 to +0 |
+
+### Elite Controller (Level 2-4, Echelon 1)
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| 0 to +1 | 0 to +1 | +1 to +2 | +1 to +2 | 0 to +1 |
+
+### Solo (Level 5-7, Echelon 2) - Add +1 bonus
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +3 to +4 | +2 to +3 | +1 to +2 | +2 to +3 | +2 to +3 |
+
+### Leader (Level 5-7, Echelon 2) - Add +1 bonus
+| Might | Agility | Reason | Intuition | Presence |
+|-------|---------|--------|-----------|----------|
+| +3 to +4 | +2 to +3 | +2 to +3 | +2 to +3 | +3 to +4 |
+
+## Step 4b: Level-Scaled Force Movement (from Bestiary Analysis)
+
+Force movement values (push, pull, slide) scale with monster level and echelon:
+
+| Level Range | Echelon | Push (T1/T2/T3) | Pull (T1/T2/T3) | Slide (T1/T2/T3) |
+|-------------|---------|-----------------|-----------------|------------------|
+| Level 1 | 0 | 1/1/1 | 1/2/2 | 1/2/2 |
+| Level 2-4 | 1 | 1/2/2 | 2/3/4 | 2/3/4 |
+| Level 5-7 | 2 | 2/2/3 | 3/4/5 | 3/4/5 |
+| Level 8-10 | 3 | 2/3/3 | 4/5/6 | 4/5/6 |
+
+### Force Movement Types
+
+| Type | Direction | Typical Range | Examples |
+|------|-----------|---------------|----------|
+| **Push** | Away from source | 1-3 | push 1, push 2, push 3 |
+| **Pull** | Toward source | 2-6 | pull 2, pull 4, pull 6 |
+| **Slide** | Any direction | 2-8 | slide 2, slide 5, slide 8 |
+| **Vertical** | Up/down | 2-5 | vertical push 3 |
+
+### Role-Specific Preferences
+
+| Role | Preferred Force Movement | Typical Values |
+|------|-------------------------|----------------|
+| Harrier | Pull | 2/4/6 at Level 1, 4/5/6 at Level 8+ |
+| Brute | Push | 1/2/3 at any level |
+| Controller | Pull/Slide | 2/4/6 (low), 4/5/6 (high) |
+| Artillery | Slide | 2/4/5 (low), 4/6/8 (high) |
+| Ambusher | Pull | 2/3/4 |
+
+### Movement with Attack Pattern
+"The [creature] [jumps/shifts/flies] up to [X] squares before or after making this strike."
+
+## Step 4c: Status Duration Conventions (from Official Conditions Docs)
+
+### Critical Rule: Conditions Are Inherently Persistent
+
+The official Draw Steel condition definitions do NOT include "(save ends)" as part of the condition itself. The duration is an EFFECT applied by monster abilities.
+
+| Condition | Type | How It Ends |
+|-----------|------|-------------|
+| **Bleeding** | Persistent, ongoing | Until healed (triggers on action use) |
+| **Grabbed** | Conditional | Escape, release, or break adjacency |
+| **Prone** | Conditional | Stand up maneuver |
+| **Slowed** | Persistent | Until healed |
+| **Dazed** | Persistent | Until healed |
+| **Weakened** | Persistent | Until healed |
+| **Frightened** | Conditional | When source changes or is removed |
+| **Restrained** | Persistent | Until healed or escaped |
+
+### Condition Application Format
+
+**With Save Ends:**
+- Format: `[potency], [condition] (save ends)`
+- Example: `M < 2, prone (save ends)`, `A < 1, slowed (save ends)`
+
+**Conditional (no save ends):**
+- Format: `[potency], [condition]`
+- Example: `A < 2, prone` (ends by standing)
+
+**Ongoing/Damage-over-time:**
+- Format: `[condition]`
+- Example: `bleeding` (triggers on action use)
+
+### Tier-Based Patterns
+
+| Tier | Pattern | Example |
+|------|---------|---------|
+| Tier 1 | Instant or conditional | "prone" (ends by standing) |
+| Tier 2 | Save ends | "prone (save ends)" |
+| Tier 3 | Save ends + secondary effect | "prone and bleeding (save ends)" |
+
+### Combined Format (Potency + Condition + Duration)
+```
+- ≤11: 5 damage; M < 1, prone
+- 12-16: 8 damage; M < 2, prone (save ends)
+- 17+: 10 damage; M < 3, prone and bleeding (save ends)
+```
+
+## Step 4d: Triggered Actions and Free Triggered Actions (from Combat.md)
+
+### Core Rules
+- **Triggered Actions:** Monsters can use 1 triggered action per round (on their turn OR another creature's turn)
+- **Free Triggered Actions:** Same rules, but DON'T count against the 1/round limit
+- **Priority:** Player creatures resolve first, then Director for monsters
+- **Dazed:** A dazed creature can't use triggered or free triggered actions
+
+### When to Use Each Type
+
+**Use Free Triggered Actions for:**
+- Essential counter-attacks (when damaged)
+- Core defensive mechanics
+- Abilities that should always be available
+
+**Use Triggered Actions for:**
+- Situational ally protection (save the free one for yourself)
+- Area effects that might not trigger often
+- Secondary reactions
+
+### Format Templates
+
+**Free Triggered Action (Counter-Attack):**
+```markdown
+> | **[Keywords]** | **Free triggered action** |
+> | **📏 [Range]** | **🎯 [Target]** |
+>
+> **Trigger:** A creature damages you with a melee attack.
+>
+> **Effect:** Make a [type] strike against the triggering creature.
+```
+
+**Triggered Action (Ally Protection):**
+```markdown
+> | **[Keywords]** | **Triggered action** |
+> | **📏 [Range]** | **🎯 [Target]** |
+>
+> **Trigger:** An ally within distance is targeted by an enemy's ability.
+>
+> **Effect:** Each target shifts up to 2 squares before the damage is resolved.
+```
+
+**Free Triggered Action (Zone Response):**
+```markdown
+> | **-** | **Free triggered action** |
+> | **📏 Self** | **🎯 Self** |
+>
+> **Trigger:** A creature leaves the area of your [aura trait].
+>
+> **Effect:** You shift up to your speed, and [effect].
+```
+
+### Triggered Action Availability by Organization
+
+Based on Bestiary analysis, triggered actions are reserved for more powerful monsters:
+
+| Organization | Level Range | Typical Triggered Actions |
+|--------------|-------------|---------------------------|
+| **Minion** | Any | None (too fragile/simple) |
+| **Horde** | Level 1-3 | None (swarms use area effects) |
+| **Platoon** | Level 1-5 | None (focus on signature ability) |
+| **Elite** | Level 4+ | 1 triggered action (situational) |
+| **Leader** | Level 4+ | 1 triggered action (often ally-focused) |
+| **Solo** | Level 5+ | 1-2+ free triggered actions (core mechanics) |
+
+### Role-Based Triggered Action Patterns
+
+| Role | Triggered Action Type | Typical Trigger |
+|------|----------------------|-----------------|
+| **Solo Controllers** | Free - Zone/Aura response | "Creature leaves aura" |
+| **Solo Brutes** | Free - Counter-attack | "Damaged by melee" |
+| **Elite Defenders** | Triggered - Ally protection | "Ally targeted" |
+| **Leaders** | Triggered - Team coordination | "Enemy targets ally" |
+
+### When to Skip Triggered Actions
+
+**Do NOT add triggered actions for:**
+- Minions (any level)
+- Horde monsters (Level 1-3)
+- Platoon monsters (Level 1-5)
+- Monsters with 3+ abilities already
+
+**Add triggered actions for:**
+- Elites/Leaders with thematic defensive ability
+- Solos with core mechanical reactions
+- High-level (5+) monsters that need reactive depth
+
+### Damage Scaling for Triggered Actions
+
+Triggered action damage typically equals:
+- **T1 damage** for simple counter-attacks
+- **T2 damage** for enhanced reactions
+- **T3 damage** for powerful callbacks
+
+### Examples from Bestiary
+
+**Counter-Attack (Fire Giant Red Fist - Level 9 Elite Brute):**
+```markdown
+> ❗️ **Heat and Pressure**
+>
+> | **Melee** | **Free triggered action** |
+> | **📏 Melee 3** | **🎯 The triggering creature** |
+>
+> **Trigger:** A creature within distance willingly moves or shifts away from the red fist.
+>
+> **Effect:** The target makes a Might test.
+> - ≤11: Weakened and slowed (save ends)
+> - 12-16: Weakened (EoT)
+> - 17+: No effect
+```
+
+**Ally Protection (Kobold Centurion - Level 1 Leader):**
+```markdown
+> ❗️ **Testudo!**
+>
+> | **Area** | **Triggered action** |
+> | **📏 5 burst** | **🎯 Each ally in the area** |
+>
+> **Trigger:** A creature uses an ability that targets the centurion or an ally within distance.
+>
+> **Effect:** Each target shifts up to 2 squares before the damage is resolved.
+```
+
+**Solo Core Mechanic (Omen Dragon - Level 8 Solo):**
+```markdown
+> ❗️ **Don't Turn Away**
+>
+> | **-** | **Free triggered action** |
+> | **📏 Self** | **🎯 Self** |
+>
+> **Trigger:** A creature leaves the area of the dragon's Stagnant Wyrmscale Aura trait.
+>
+> **Effect:** The dragon shifts up to their speed, and the Deathcount of each dragonsealed creature who comes adjacent to the dragon during this shift is reduced by 1.
+```
+
+### Common Mistakes to Avoid
+
+1. **Don't use (save ends)** in triggered action effects - the trigger is already the condition
+2. **Keep effects immediate** - triggered actions resolve instantly when trigger occurs
+3. **One trigger per action** - if multiple triggers happen simultaneously, only one triggers
+
+## Step 5: Select Keywords
+
+Choose from these **exact** lists only. Do NOT invent keywords.
+
+### Creature Keywords (Ancestry)
+Based on Bestiary analysis, common combinations include:
+- **Humanoid + Rival** (28x in Bestiary)
+- **Abyssal + Demon** (27x)
+- **Undead** (16x)
+- **Human + Humanoid** (15x)
+- **Humanoid + Orc** (13x)
+- **Goblin + Hobgoblin + Humanoid + Infernal** (13x)
+- **Fey + Humanoid + Shadow Elf** (13x)
+- **Dwarf + Humanoid** (13x)
+- **Fey + Humanoid + Wode Elf** (12x)
+- **Humanoid + Kobold** (9x)
+- **Goblin + Humanoid** (9x)
+- **Abyssal + Gnoll** (9x)
+- **Fey + High Elf + Humanoid** (9x)
+
+**Standard keyword lists:**
+- **Cosmological:** Abyssal, Elemental, Fey, Infernal
+- **Biological:** Animal, Beast, Giant, Humanoid, Ooze, Plant
+- **Supernatural:** Construct, Dragon, Horror, Undead
+- **Special:** Accursed, Soulless, Swarm
+
+### Ability Keywords
+Strike, Magic, Weapon, Psionic, Area, Melee, Ranged, Free, Triggered, Maneuver
+
+### Damage Types (Most Common in Bestiary)
+1. **fire** (24.3%)
+2. **corruption** (23.8%)
+3. **poison** (20.4%)
+4. **psychic** (16.6%)
+5. **holy** (13.2%)
+6. acid, lightning, sonic, cold
+
+### Conditions (Most Common in Bestiary)
+1. **prone** (30.6%)
+2. **slowed** (26.4%)
+3. **bleeding** (25.5%)
+4. **dazed** (22.6%)
+5. **restrained** (22.3%)
+6. **weakened** (20.9%)
+7. **grabbed** (17.9%)
+8. **frightened** (14.2%)
+9. **pushed** (8.5%)
+10. **taunted** (6.2%)
+
+## Step 6: Complete Stat Block Format
+
+Output **MUST** match this exact MCDM format:
+
+```markdown
+---
+ancestry:
+  - [Keyword1]
+  - [Keyword2]
+ev: [X]
+file_basename: [Creature Name]
+file_dpath: Monsters/[Category]/Statblocks
+free_strike: [Z]
+level: [L]
+might: [M]
+agility: [A]
+reason: [R]
+intuition: [I]
+presence: [P]
+roles:
+  - [Role]
+size: [Size]
+source: mcdm.monsters.v1
+speed: [Speed]
+stability: [Stability]
+stamina: '[Y]'
+type: monster
+---
+
+###### [Creature Name]
+
+| [Ancestry1], [Ancestry2]... |          -          |      Level [L]       |             [Role]              |         EV [X]          |
+| :--------------------------: | :-----------------: | :------------------: | :-----------------------------: | :---------------------: |
+|        **[Size]**<br/> Size  | **[Speed]**<br/> Speed | **[Stamina]**<br/> Stamina | **[Stability]**<br/> Stability | **[Free Strike]**<br/> Free Strike |
+|   **-**<br/> Immunity        | **-**<br/> Movement  |          -           | **-**<br/> With Captain         | **-**<br/> Weaknesses   |
+|   **[Might]**<br/> Might     | **[Agility]**<br/> Agility | **[Reason]**<br/> Reason | **[Intuition]**<br/> Intuition | **[Presence]**<br/> Presence |
+
+<!-- -->
+> ⚔️ **[Signature Ability Name]**
+>
+> | **[Keywords]** |          **[Action Type]** |
+> | -------------- | --------------------------: |
+> | **📏 [Range]** | **🎯 [Target]** |
+>
+> **Power Roll + [Characteristic]:**
+>
+> - **≤11:** [D1] [Type]; [Potency], [Condition]
+> - **12-16:** [D2] [Type]; [Potency], [Condition]
+> - **17+:** [D3] [Type]; [Potency], [Condition]
+>
+> **Effect:** [Effect description]
+
+<!-- -->
+> ⭐️ **[Secondary/Trait Ability Name]**
+>
+> | **[Keywords]** |          **[Action Type]** |
+> | -------------- | --------------------------: |
+> | **📏 [Range]** | **🎯 [Target]** |
+>
+> **Effect:** [Effect description]
+
+<!-- -->
+> ❗️ **[Triggered Ability Name]**
+>
+> | **[Keywords]** |       **[Action Type]** |
+> | -------------- | -----------------------: |
+> | **📏 [Range]** | **🎯 [Target]** |
+>
+> **Trigger:** [Trigger condition]
+>
+> **Effect:** [Effect description]
+```
+
+### Icon Meanings
+- ⚔️ = Signature Ability (Main Action)
+- ❇️ = Secondary Ability (Main Action)
+- 🏹 = Ranged Ability
+- 🗡 = Melee Ability
+- ⭐️ = Trait/Passive
+- ❗️ = Triggered/Free Triggered Action
+- 📏 = Range indicator (Melee 1, Ranged 5, 3 burst, etc.)
+- 🎯 = Target (One creature, Each enemy, etc.)
+
+### Action Types
+- Main Action
+- Maneuver
+- Free Triggered Action
+- Triggered Action
+- Free Action
+
+### Range Indicators
+- Melee 1 (adjacent square)
+- Melee 2 (nearby)
+- Ranged 5 (short range)
+- Ranged 8 (long range)
+- 3 burst (area around target)
+- 3 wall (linear area)
+
+## Step 7: Design Signature Ability
+
+**Format:**
+- Use the table format with icons
+- Include Power Roll + [Characteristic]
+- Use calculated damage values (Damage_T1, T2, T3)
+- **Include potencies for conditions** - most conditions should have a potency check
+- Match damage type to creature theme
+
+**Common potency patterns:**
+- `A < 1, prone` - Knock prone (Agility check)
+- `M < 2, slowed` - Slow (Might check)
+- `R < 0, dazed` - Daze (Reason check)
+- `I < 1, weakened` - Weaken (Intuition check)
+- `P < 1, frightened` - Frighten (Presence check)
+
+**Example with potencies:**
+```
+Power Roll + Agility:
+- ≤11: 5 slashing; A < 0, prone
+- 12-16: 8 slashing; A < 1, prone
+- 17+: 10 slashing; A < 2, prone and can't stand (save ends)
+```
+
+**Common damage types:** fire, corruption, poison, psychic, holy
+**Common conditions:** prone, slowed, bleeding, dazed, restrained, weakened
+
+## Step 8: Design Secondary/Trait Abilities
+
+- Use ⭐️ icon for traits/passives
+- Use ❗️ icon for triggered abilities
+- Common patterns: ally bonuses, defensive effects, movement abilities
+
+## Self-Validation Checklist (MANDATORY)
+
+Before outputting the monster, verify ALL of these:
+
+- [ ] **EV Formula:** `ceil(((2 × L) + 4) × Org_Mod)` matches output
+- [ ] **Stamina Formula:** `ceil(((10 × L) + Role_Mod) × Org_Mod)` matches output
+- [ ] **Free Strike:** Equals calculated Tier 1 damage exactly
+- [ ] **Damage T1:** `ceil((4 + L + Dmg_Mod) × 0.6)` matches output
+- [ ] **Damage T2:** `ceil((4 + L + Dmg_Mod) × 1.1)` matches output
+- [ ] **Damage T3:** `ceil((4 + L + Dmg_Mod) × 1.4)` matches output
+- [ ] **Horde/Minion:** Damage correctly divided by 2
+- [ ] **Size:** Matches common patterns (Minion=1M, Platoon=1M, Solo=1M/1L)
+- [ ] **Speed:** Appropriate for role (Harrier=6-7, Mount=8, others=5-6)
+- [ ] **Characteristics:** Within expected ranges for role
+- [ ] **Stability:** 0 unless defensive theme
+- [ ] **Ancestry:** All from approved lists (no inventions)
+- [ ] **Conditions:** All from approved lists (no inventions)
+- [ ] **Format:** Matches MCDM stat block template exactly
+
+## Role Templates (Updated from Bestiary)
+
+### HARRIER: Mobility + Strikes
+- **Size:** 1M (Minion/Horde/Platoon), 1L (Elite/Solo)
+- **Speed:** 6-8 (fastest of all roles)
+- **Agility:** +2 to +3
+- **Might:** +0 to +2
+- **Signature:** Fast attacks with push/slow effects
+- **Secondary:** Repositioning abilities, escape effects
+- **Common abilities:** Skitter Away, Hit and Run
+
+### BRUTE: High Damage + Area
+- **Size:** 1M to 3 (larger = more minions)
+- **Speed:** 5-6
+- **Might:** +2 to +3
+- **Signature:** Powerful attacks with prone/grab
+- **Secondary:** Area control, forced movement
+- **Common abilities:** Smash, Grab and Smash
+
+### CONTROLLER: Debuffs + Positioning
+- **Size:** 1M
+- **Speed:** 5-6
+- **Reason:** +1 to +2
+- **Signature:** Magic/psionic attacks with debuffs
+- **Secondary:** Battlefield control, zones
+- **Common abilities:** Area effects, forced movement
+
+### DEFENDER: Protection + Reduction
+- **Size:** 1M
+- **Speed:** 5-6
+- **Might:** +1 to +2
+- **Signature:** Defensive strikes with ally buffs
+- **Secondary:** Protective effects, cover
+- **Common abilities:** Shield allies, reduce damage
+
+### AMBUSHER: Burst + Surprise
+- **Size:** 1M
+- **Speed:** 6-8
+- **Agility:** +2 to +3
+- **Signature:** High damage from ambush
+- **Secondary:** Escape/evasion abilities
+- **Common abilities:** Flanking, surprise attacks
+
+### ARTILLERY: Area + Range
+- **Size:** 1M
+- **Speed:** 5
+- **Reason:** +1 to +2
+- **Signature:** Ranged area attacks
+- **Secondary:** Positioning/sniping
+- **Common abilities:** Ranged burst, multi-target
+
+### HEXER: Conditions + Curses
+- **Size:** 1M
+- **Speed:** 5
+- **Reason:** +0 to +1
+- **Signature:** Debuff-focused attacks
+- **Secondary:** Hexes and curses
+- **Common abilities:** Status effects, conditions
+
+### MOUNT: Carrying + Movement
+- **Size:** 2-4 (Platoon), 3-5 (Elite)
+- **Speed:** 8 (fastest overall)
+- **Might:** +2, Agility: +1
+- **Signature:** Transport-focused attacks
+- **Secondary:** Movement enhancement
+- **Common abilities:** Carry, Trample
+
+### SUPPORT: Buffs + Healing
+- **Size:** 1M
+- **Speed:** 5
+- **Reason/Intuition/Presence:** +0 to +1 each
+- **Signature:** Support attacks with healing
+- **Secondary:** Ally enhancement
+- **Common abilities:** Buffs, healing, buffs for allies
+
+## Critical Rules
+
+1. **NO D&D terminology:** No "vs. AC", "Armor Class", "HP", "hit points", "d20", "DC"
+2. **Use 2d10:** Power rolls use `2d10 + characteristic`
+3. **Tier ranges:** ≤11 (T1), 12-16 (T2), 17+ (T3)
+4. **Free Strike = T1 damage:** This is the definitive rule
+5. **Horde/Minion damage:** Always divide by 2 after calculation
+6. **All stats use ceil():** Round UP for calculations (EV, Stamina, Damage)
+7. **Division uses round DOWN:** Always round down when dividing (for Horde/Minion)
+8. **Natural 19-20:** Always tier 3, can be a critical hit
+9. **Characteristics:** Range from -5 to +5, where 0 = average human
+10. **Edges and Banes:** Edge = +2, Bane = -2, they cancel out
+11. **Potencies:** Write as `[Char] < Value` (e.g., `A < 1, prone`). Target resists if their score >= value.
+12. **Strike Bonus:** Add highest characteristic to strike damage
+13. **Echelon scaling:** Highest characteristic = 1 + echelon (Level 1=+1, 2-4=+2, 5-7=+3, 8-10=+4)
+14. **Leader/Solo bonuses:** +1 to highest characteristic (max +5), +1 to all potencies
+15. **Target counts:** Normal=1, Elite/Leader/Solo=2
+16. **Match the MCDM format exactly:** Use the table format, icons, and structure shown
+17. **Use common damage types:** fire, corruption, poison, psychic, holy
+18. **Use common conditions:** prone, slowed, bleeding, dazed, restrained, weakened
+19. **Most minions are 1M size, not 1S:** Follow Bestiary patterns
