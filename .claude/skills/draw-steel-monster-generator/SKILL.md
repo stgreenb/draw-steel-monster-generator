@@ -8,9 +8,7 @@ metadata:
   version: "1.0"
 ---
 
-# Draw Steel Monster Generator (DEPRECATED)
-
-> **⚠️ DEPRECATED:** This directory is deprecated. The canonical skill location is now `.claude/skills/draw-steel-monster-generator/`. Please use that location instead.
+# Draw Steel Monster Generator
 
 Generate Draw Steel TTRPG monsters that strictly conform to official MCDM stat block format from Monster Basics chapter.
 
