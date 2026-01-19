@@ -14,12 +14,379 @@ Generate Draw Steel TTRPG monsters that strictly conform to official MCDM stat b
 
 ## Quick Start
 
-**Input Format:** `"Create a [Level] [Creature Name], [Organization], [Role]"`
+**Input Format:** `"Create a [Level] [Creature Name], [Organization], [Role] [options]"`
 
 **Examples:**
 - `"Create a Level 3 Gremlin, Minion Harrier"`
-- `"Create a Level 5 Red Dragon, Solo Brute"`
-- `"Create a Level 1 Kobold Veles, Minion Harrier"`
+- `"Create a Level 5 Red Dragon, Solo Brute --format foundry"`
+- `"Create a Level 8 Lich, Solo Hexer --format both"`
+
+## Output Formats
+
+The skill supports multiple output formats:
+
+### Markdown (Default)
+Standard Draw Steel stat block in Markdown format, suitable for documentation or manual use.
+
+### Foundry VTT
+Generates a JSON file compatible with Foundry VTT's Draw Steel system. Output includes:
+- Complete NPC actor with all stats, characteristics, and combat properties
+- Abilities as items with power roll effects
+- Features and traits as passive items
+- Role-based token images
+- Solo Monster feature for solo creatures
+
+### Both
+Generates both Markdown stat block AND Foundry VTT JSON file.
+
+### Format Options
+Use the `--format` option to specify output format:
+- `--format markdown` (default) - Standard Markdown stat block
+- `--format foundry` - Foundry VTT JSON file
+- `--format both` - Both Markdown and Foundry VTT
+
+## Foundry VTT JSON Schema (Required for --format foundry/both)
+
+When generating Foundry VTT JSON, output a JSON object with this EXACT structure:
+
+```json
+{
+  "name": "MonsterName",
+  "type": "npc",
+  "img": "systems/draw-steel/assets/roles/brute.webp",
+  "system": {
+    "stamina": { "value": 50, "max": 50, "temporary": 0 },
+    "characteristics": {
+      "might": { "value": 2 },
+      "agility": { "value": 1 },
+      "reason": { "value": -1 },
+      "intuition": { "value": 1 },
+      "presence": { "value": -1 }
+    },
+    "combat": {
+      "save": { "threshold": 6, "bonus": "" },
+      "size": { "value": 1, "letter": "L" },
+      "stability": 0,
+      "turns": 1
+    },
+    "movement": {
+      "value": 7,
+      "types": ["fly"],
+      "hover": false,
+      "disengage": 1
+    },
+    "damage": {
+      "immunities": { "all": 0, "poison": 0, "acid": 0, "cold": 0, "corruption": 0, "fire": 0, "holy": 0, "lightning": 0, "psychic": 0, "sonic": 0 },
+      "weaknesses": { "all": 0 }
+    },
+    "biography": { "value": "", "director": "", "languages": [] },
+    "source": { "book": "Monsters", "page": "", "license": "Draw Steel Creator License" },
+    "negotiation": { "interest": 5, "patience": 5, "motivations": [], "pitfalls": [], "impression": 1 },
+    "monster": {
+      "freeStrike": 6,
+      "keywords": ["Beast", "Animal"],
+      "level": 2,
+      "ev": 8,
+      "role": "brute",
+      "organization": "platoon"
+    }
+  },
+  "prototypeToken": {
+    "name": "MonsterName",
+    "displayName": 20,
+    "displayBars": 20,
+    "bar1": { "attribute": "stamina" },
+    "width": 1,
+    "height": 1,
+    "disposition": -1,
+    "texture": { "src": "systems/draw-steel/assets/roles/brute.webp" }
+  },
+  "items": [
+    {
+      "name": "Stinger Strike",
+      "type": "ability",
+      "system": {
+        "type": "main",
+        "category": "signature",
+        "keywords": ["Melee", "Strike"],
+        "distance": { "type": "melee", "primary": 1 },
+        "target": { "type": "creature", "value": 1 },
+        "damageDisplay": "melee",
+        "power": { "roll": { "formula": "@chr", "characteristics": ["agility"] }, "effects": {} },
+        "effect": {
+          "before": "<p><dl class=\"power-roll-display\"><dt class=\"tier1\"><p>!</p></dt><dd><p>[[/damage 6]] poison damage; [[/apply slowed end=save]] (A < -1).</p></dd><dt class=\"tier2\"><p>@</p></dt><dd><p>[[/damage 11]] poison damage; [[/apply slowed end=save]] (A < 0).</p></dd><dt class=\"tier3\"><p>#</p></dt><dd><p>[[/damage 14]] poison damage; [[/apply slowed end=save]] (A < 1).</p></dd></dl></p>",
+          "after": "<p>You shift up to 2 squares.</p>"
+        },
+        "source": { "book": "Monsters", "license": "Draw Steel Creator License" },
+        "_dsid": "stinger-strike",
+        "story": "",
+        "resource": null,
+        "trigger": ""
+      },
+      "_id": "a1B2c3D4e5F67890",  // 16 characters: a-z, A-Z, 0-9 only
+      "effects": [],
+      "ownership": { "default": 0 }
+    }
+  ],
+  "_stats": { "systemId": "draw-steel", "systemVersion": "0.9.0" },
+  "_id": "sJhjuVdliz3ThjEa"  // 16 characters, unique for each actor
+}
+```
+
+### Foundry VTT Rules (CRITICAL - READ BEFORE GENERATING JSON)
+
+| DO | DON'T |
+|----|-------|
+| `characteristics.might.value` | `characteristics.might` alone or `mod/bonus` |
+| `stamina.value` and `stamina.max` | `hp` field |
+| `combat.turns` (Solo=2, others=1) | Missing `combat` section |
+| `power.effects: {}` (empty!) | Complex nested `power.effects` structures |
+| `type: "main"` in system | Put type in keywords like `["Main Action"]` |
+| `systems/draw-steel/assets/roles/{role}.webp` | `modules/mcdm-monsters/...` |
+| `prototypeToken` with `disposition: -1` | `token` instead of `prototypeToken` |
+| `_stats.systemId: "draw-steel"` | Missing `_stats` section |
+| `@potency.weak/average/strong` | `@potency.1/2/3` or plain numbers |
+| Use `[[/apply condition]]` in effects | Plain text like "slowed (save ends)" |
+| Power roll HTML in effect.before | Flat list of all damages |
+| `["fly"]` for wasps/birds/bats | `["walk", "fly"]` for flying creatures |
+| `disengage: 1` | `disengage: 0` (unless specified) |
+| `formula: "@chr"` | `formula: "@might"` or `formula: "@agility"` |
+| Keywords lowercase: `["fey", "humanoid"]` | Keywords capitalized: `["Fey", "Humanoid"]` |
+| Keywords match distance type | "Melee" in keywords for ranged abilities |
+| `_id` = 16 alphanumeric chars | UUID like `d4e5f6a7-b8c9-0123-defa-456789012345` (36 chars) |
+
+### Self-Validation Checklist for Foundry VTT JSON (MANDATORY)
+
+Before outputting JSON with `--format foundry` or `--format both`, verify ALL of these:
+
+- [ ] **Actor type:** `type` is `"npc"` (not `"hero"` or other)
+- [ ] **All `_id` fields:** Exactly 16 alphanumeric characters (no dashes, no UUIDs)
+- [ ] **Item types:** All items have `type` of `"ability"` or `"feature"` (no `"class"`, `"ancestry"`, etc.)
+- [ ] **Ability types:** All abilities have valid `system.type`:
+  - `main`, `maneuver`, `freeManeuver`, `triggered`, `freeTriggered`, `move`, `none`, `villain`
+- [ ] **Ability categories:** All abilities have valid `system.category`:
+  - `heroic`, `freeStrike`, `signature`, `villain`, or empty (for features)
+- [ ] **Monster role:** `system.monster.role` is valid:
+  - `ambusher`, `artillery`, `brute`, `controller`, `defender`, `harrier`, `hexer`, `mount`, `support`, `solo`
+- [ ] **Monster organization:** `system.monster.organization` is valid:
+  - `minion`, `horde`, `platoon`, `elite`, `leader`, `solo`
+- [ ] **Monster keywords:** All in `system.monster.keywords` are valid:
+  - `abyssal`, `accursed`, `animal`, `beast`, `construct`, `dragon`, `elemental`, `fey`, `giant`, `horror`, `humanoid`, `infernal`, `plant`, `soulless`, `swarm`, `undead`
+- [ ] **Ability keywords:** All in ability `system.keywords` are valid:
+  - `animal`, `animapathy`, `area`, `charge`, `chronopathy`, `cryokinesis`, `earth`, `fire`, `green`, `magic`, `melee`, `metamorphosis`, `psionic`, `pyrokinesis`, `ranged`, `resopathy`, `rot`, `performance`, `strike`, `telekinesis`, `telepathy`, `void`, `weapon`
+- [ ] **Formula:** All `system.power.roll.formula` equal `"@chr"` (not `"@might"`, `"@agility"`, etc.)
+- [ ] **Keywords lowercase:** All keywords are lowercase (no `"Melee"`, `"Weapon"`, `"Humanoid"`)
+- [ ] **Power effects:** For generated abilities (heroic, signature, villain), `system.power.effects` is empty `{}`
+- [ ] **No HTML entities:** `system.effect.before` and `system.effect.after` use raw `<`, `>`, `&` not `&lt;`, `&gt;`, `&amp;`
+- [ ] **Required fields:** All required NPC fields present:
+  - `system.stamina.value` and `system.stamina.max`
+  - `system.characteristics` with all five characteristics
+  - `system.combat.save.threshold`
+  - `system.combat.size.value`
+  - `system.monster.level` and `system.monster.ev`
+- [ ] **Token config:** `prototypeToken.bar1.attribute` equals `"stamina"`
+
+**If any check fails, correct the JSON before outputting.**
+
+### Mandatory Validation Script Execution (REQUIRED)
+
+For `--format foundry` or `--format both`, you MUST run the validation script.
+
+**Working directory:** The skill is executed from the `ds-monster-generator` project root.
+
+**Run validation:**
+```bash
+python scripts/validate_foundry_json.py output/filename.json
+```
+
+**This is NOT optional - it is a required step before completing the task.**
+
+**Workflow:**
+1. Generate JSON file(s) in the `output/` directory
+2. Run validation: `python scripts/validate_foundry_json.py output/filename.json`
+3. Review validation output:
+   - **ERRORS (❌):** Must fix before proceeding - these will cause Foundry import failures
+   - **WARNINGS (⚠️):** Acceptable for official content, review but proceed if intentional
+   - **PASSED (✓):** Validation successful
+4. If errors: Fix the JSON, then re-run validation
+5. Only report success when validation passes with no errors
+
+**Example workflow:**
+```bash
+# Generate JSON files (output/fungal-morlock.json)
+
+# Run validation
+$ python scripts/validate_foundry_json.py output/fungal-morlock.json
+# Review output - if errors, fix and re-run
+# Only report completion after validation passes
+```
+
+**Validation script:** `scripts/validate_foundry_json.py`
+
+### ID Format Requirement (CRITICAL!)
+All `_id` fields must be exactly **16 alphanumeric characters** (a-z, A-Z, 0-9 only):
+
+```json
+// CORRECT (exactly 16 characters):
+"_id": "aB2c3D4e5F6G7890"  // Count: a B 2 c 3 D 4 e 5 F 6 G 7 8 9 0 = 16
+
+// INCORRECT (15 characters - TOO SHORT):
+"_id": "aB2c3D4e5F67890"   // Only 15 characters - WILL FAIL
+
+// INCORRECT (36 characters - UUID format):
+"_id": "d4e5f6a7-b8c9-0123-defa-456789012345"  // WILL FAIL
+```
+
+**Count characters carefully:** `aB2c3D4e5F6G7890` = 16 chars
+
+Each item needs its own unique 16-character ID. Example:
+```json
+"items": [
+  {
+    "name": "Shield Bash",
+    "_id": "sHiElDbAsH123456"  // 16 chars
+  },
+  {
+    "name": "Shield Wall", 
+    "_id": "sHiElDwAlL789012"  // 16 chars, different from first
+  }
+]
+
+### Power Roll Formula Syntax (CRITICAL!)
+Always use `"formula": "@chr"` in the power roll - never use the characteristic name directly:
+
+```json
+"power": {
+  "roll": {
+    "formula": "@chr",
+    "characteristics": ["agility"]
+  },
+  "effects": {}
+}
+```
+
+The `characteristics` array specifies which characteristic(s) can be used for the power roll, while `formula` is always `"@chr"`.
+
+For abilities that DON'T use a power roll (buffs, movement, protective reactions), use:
+```json
+"power": {
+  "roll": { "formula": "@chr", "characteristics": [] },
+  "effects": {}
+}
+```
+
+### HTML in Effect Text
+Use raw HTML tags in `effect.before` and `effect.after`, NOT HTML entities:
+```json
+// CORRECT:
+"before": "<p>You push the target 2 squares.</p>"
+
+// INCORRECT (will display literally):
+"before": "<p>You push the target 2 squares &lt; 3.</p>"
+
+Use `<`, `>`, `&` directly - the JSON renderer handles them correctly.
+
+### Keywords Format (CRITICAL!)
+Keywords are the monster's **tags** (ancestry, type, creature type), NOT action types:
+
+**INCLUDE in keywords:**
+- Ancestry/creature type: `["fey", "humanoid"]`, `["beast", "animal"]`, `["giant", "humanoid"]`
+- Damage types in ability: `["piercing", "slashing", "bludgeoning"]`, `["fire", "cold"]`
+- Magic/weapon tags: `["magic"]`, `["weapon"]`
+
+**DO NOT include in keywords:**
+- Action types: NOT `["Main Action"]`, `["Maneuver"]`, `["Triggered Action"]`
+- Range types: NOT `["Melee"]`, `["Ranged"]` (use `distance.type` instead)
+
+**Example:**
+```json
+"keywords": ["melee", "magic", "weapon"]  // NOT ["Main Action"]
+```
+
+### Potency Values (CRITICAL - use these EXACT strings)
+- Tier 1 → `"value": "@potency.weak"`
+- Tier 2 → `"value": "@potency.average"`
+- Tier 3 → `"value": "@potency.strong"`
+
+### Damage Immunities/Weaknesses Format
+```json
+"damage": {
+  "immunities": { "all": 0, "poison": 0, "acid": 0, "cold": 0, "corruption": 0, "fire": 0, "holy": 0, "lightning": 0, "psychic": 0, "sonic": 0 },
+  "weaknesses": { "all": 0, "cold": 0, "fire": 5 }
+}
+```
+
+### Movement Types by Creature Type
+- **Flying creatures** (birds, wasps, dragons): `["fly"]`
+- **Walking creatures**: `["walk"]`
+- **Amphibious**: `["walk", "fly"]` or `["walk", "swim"]`
+- **Burrowing**: `["burrow"]` or `["walk", "burrow"]`
+
+**Disengage value:** Always `1` unless specified otherwise (wasps have disengage 1, not 0)
+
+### Combat Size and Token Configuration
+```json
+"combat": {
+  "save": { "threshold": 6, "bonus": "" },
+  "size": { "value": 3, "letter": "M" },
+  "stability": 0,
+  "turns": 1
+}
+```
+- `size.value` = Number of tiles the creature occupies (1=1 tile, 3=3 tiles, 5=5 tiles for solo)
+- `size.letter` = Size category: "T" (Tiny), "S" (Small), "M" (Medium), "L" (Large)
+- Token size is always `width: 1, height: 1` regardless of creature size (Solo creatures use 2x2 tokens in tokens, but the actor's combat.size.value indicates tiles)
+
+For typical monsters:
+- Minion/Horde/Platoon/Elite/Leader: `size.value: 1` (1 tile)
+- Solo monsters: `size.value: 3` to `5` (3-5 tiles)
+
+### Enrichers in Effect Text (Required!)
+Put `[[/apply condition]]` enrichers directly in `effect.before` or `effect.after`:
+```json
+"effect": {
+  "before": "The target is [[/apply slowed end=save]] by your gaze.",
+  "after": ""
+}
+```
+
+### Distance Type Values
+- Melee 1 → `{ "type": "melee", "primary": 1 }`
+- Ranged 5 → `{ "type": "ranged", "primary": 5 }`
+- 3 burst → `{ "type": "burst", "primary": 3 }`
+- Self → `{ "type": "self" }`
+- Wall/Line → `{ "type": "wall", "primary": 5 }`
+
+### Target Type Values
+- One creature → `{ "type": "creature", "value": 1 }`
+- Each enemy in area → `{ "type": "creature", "value": null }` or `{ "type": "creatureObject", "value": null }`
+- Zone/Area → `{ "type": "zone", "value": 5 }` (where 5 is zone size)
+- Self → `{ "type": "self" }`
+
+When an ability affects "each enemy in area" or "all targets", use `value: null` (not `value: 0`).
+
+Self-target abilities should NOT have `"value": 1`:
+```json
+// CORRECT (self target):
+"target": { "type": "self" }
+
+// INCORRECT:
+"target": { "type": "self", "value": 1 }
+```
+
+Non-damaging abilities (buffs, movement, etc.) should use empty damageDisplay:
+```json
+// CORRECT:
+"damageDisplay": ""
+
+// INCORRECT (don't use "melee" for non-damaging abilities):
+"damageDisplay": "melee"
+```
+
+### Effect Types in `system.power.effects`
+- Damage effects → `"type": "damage"` with nested `damage: { tier1: {...}, tier2: {...}, tier3: {...} }`
+- Condition effects → `"type": "applied"` with nested `applied: { tier1: {...}, ... }`
+- Force movement → `"type": "forced"`
 
 ## Step 1: Calculate Stats
 
@@ -405,6 +772,53 @@ The official Draw Steel condition definitions do NOT include "(save ends)" as pa
 - 12-16: 8 damage; M < 2, prone (save ends)
 - 17+: 10 damage; M < 3, prone and bleeding (save ends)
 ```
+
+### Foundry VTT Enrichers for Conditions (Required for --format foundry/both)
+
+When generating Foundry VTT JSON, use enrichers in ability effect text for interactive conditions:
+
+```markdown
+[[/damage 18 corruption]]              - Damage button (18 corruption damage)
+[[/damage 1d6]]                        - Damage button with dice
+[[/apply bleeding]]                    - Apply Bleeding (no save)
+[[/apply dazed save]]                  - Apply Dazed (save ends)
+[[/apply dazed end=turn]]              - Apply Dazed (save ends, ends on turn)
+[[/apply slowed end=save]]             - Apply Slowed (save ends)
+[[/apply weakened]]                    - Apply Weakened (no save)
+[[/apply prone end=save]]              - Apply Prone (save ends)
+[[/apply taunted save]]                - Apply Taunted (save ends)
+[[/apply grabbed]]                     - Apply Grabbed (save ends)
+```
+
+**Valid endings:** `encounter`, `respite`, `save`, `turn`
+
+**Example in power roll effect (simplified):**
+```json
+"effect": {
+  "before": "<p>The target is [[/apply slowed end=save]] by your gaze.</p>",
+  "after": ""
+}
+```
+
+**Free Strike:** Only listed in `monster.freeStrike` - do NOT create a "Free Strike" ability item.
+
+**For custom status effects**, generate a UUID and define the effect on the item:
+
+**For custom status effects**, generate a UUID and define the effect on the item:
+```json
+"effects": [{
+  "name": "Dragonsealed",
+  "type": "base",
+  "system": {
+    "end": { "type": "save", "roll": "1d10 + @combat.save.bonus" }
+  },
+  "statuses": [],
+  "_id": "Dxo9mYDLbbNCb28K"
+}]
+```
+Then reference it as `[[/apply Dxo9mYDLbbNCb28K save]]`
+
+**Note:** Potency text like `R < 2` remains as plain text - only use `[[/apply]]` for the condition itself.
 
 ## Step 4d: Triggered Actions and Free Triggered Actions (from Combat.md)
 
@@ -826,6 +1240,7 @@ Before outputting the monster, verify ALL of these:
 - **Templates:** [references/templates.md](references/templates.md) - Role archetypes and ability patterns
 - **Examples:** [references/examples.md](references/examples.md) - Complete stat block examples
 - **Formulas:** [references/formulas.md](references/formulas.md) - Quick reference formulas
+- **Foundry VTT Export:** [references/foundry-export.md](references/foundry-export.md) - Extended examples (schema is in SKILL.md above)
 
 ## Critical Rules
 
