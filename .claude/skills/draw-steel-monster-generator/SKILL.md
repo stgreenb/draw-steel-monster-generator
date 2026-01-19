@@ -119,6 +119,34 @@ Use the `--format` option to specify output format:
 - `--format foundry` - Foundry VTT JSON file
 - `--format both` - Both Markdown and Foundry VTT
 
+### Foundry VTT Output Requires Validation (MANDATORY)
+
+**For `--format foundry` or `--format both`, you MUST validate the JSON output.**
+
+The validation script catches errors that will cause Foundry VTT import failures:
+- Invalid monster/ability keywords
+- Wrong `_id` format (must be exactly 16 characters)
+- Missing malice features for Elite/Leader/Solo monsters
+- Invalid ability types or categories
+
+**Run validation IMMEDIATELY after generating JSON:**
+```bash
+# From the ds-monster-generator project root:
+python .claude/skills/draw-steel-monster-generator/scripts/validate_foundry_json.py output/filename.json
+```
+
+**Workflow:**
+1. Generate JSON file in `output/` directory
+2. Run validation script
+3. Review output:
+   - **ERRORS (❌):** Must fix before reporting success
+   - **WARNINGS (⚠️):** Acceptable for official content
+   - **PASSED (✓):** Validation successful
+4. If errors exist, fix the JSON and re-run validation
+5. **Only report completion when validation passes with no errors**
+
+**Skipping validation is NOT acceptable.** If you cannot find or run the validation script, report the error rather than skipping validation.
+
 ## Foundry VTT JSON Schema (Required for --format foundry/both)
 
 When generating Foundry VTT JSON, output a JSON object with this EXACT structure:
@@ -277,7 +305,7 @@ python scripts/validate_foundry_json.py output/filename.json
 
 **Workflow:**
 1. Generate JSON file(s) in the `output/` directory
-2. Run validation: `python scripts/validate_foundry_json.py output/filename.json`
+2. Run validation: `python .claude/skills/draw-steel-monster-generator/scripts/validate_foundry_json.py output/filename.json`
 3. Review validation output:
    - **ERRORS (❌):** Must fix before proceeding - these will cause Foundry import failures
    - **WARNINGS (⚠️):** Acceptable for official content, review but proceed if intentional
@@ -287,15 +315,17 @@ python scripts/validate_foundry_json.py output/filename.json
 
 **Example workflow:**
 ```bash
-# Generate JSON files (output/fungal-morlock.json)
+# Generate JSON files (output/scalathrax.json)
 
 # Run validation
-$ python scripts/validate_foundry_json.py output/fungal-morlock.json
+$ python .claude/skills/draw-steel-monster-generator/scripts/validate_foundry_json.py output/scalathrax.json
 # Review output - if errors, fix and re-run
 # Only report completion after validation passes
 ```
 
-**Validation script:** `scripts/validate_foundry_json.py`
+**Validation script:** `.claude/skills/draw-steel-monster-generator/scripts/validate_foundry_json.py`
+
+**CRITICAL:** Skipping validation will result in JSON that fails to import into Foundry VTT. If you cannot run the validation script, report this as an error rather than skipping validation.
 
 ### ID Format Requirement (CRITICAL!)
 All `_id` fields must be exactly **16 alphanumeric characters** (a-z, A-Z, 0-9 only):
