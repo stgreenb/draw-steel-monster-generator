@@ -1235,6 +1235,189 @@ Before outputting the monster, verify ALL of these:
 - **Secondary:** Ally enhancement
 - **Common abilities:** Buffs, healing, buffs for allies
 
+## Step 9: Design Malice Features
+
+Malice is a Director resource that monsters can spend to activate powerful abilities. All monsters should have malice features unless they're simple minions.
+
+### Basic Malice Features (Universal Options)
+
+These features are available to all monster types:
+
+**Brutal Effectiveness (3 Malice)**
+- **Effect:** The monster's next ability with a potency has that potency increased by 1.
+- **Icon:** ⭐️
+
+**Malicious Strike (5+ Malice)**
+- **Effect:** The monster's next strike deals extra damage equal to their highest characteristic score. Extra damage increases by 1 for each additional Malice spent (max 3× highest characteristic).
+- **Restriction:** Cannot be used two rounds in a row.
+- **Icon:** 🗡️
+
+### Malice Feature Icon Classification
+
+Use icons to indicate malice feature type:
+
+| Icon | Type | Description |
+|------|------|-------------|
+| ⭐️ | Trait | Always in effect or self-targeted |
+| 🔳 | Area | Cube, line, or wall area effects |
+| ❇️ | Aura/Burst | Affects creatures within a radius |
+| 🌀 | Special | Unique distance, encounter map effects |
+| ☠️ | Villain Action | Leader/Solo special abilities |
+
+### Malice Feature Trigger Timing
+
+All malice features activate at the start of the monster's turn:
+> "At the start of any [monster name]'s turn, you can spend Malice to activate one of the following features:"
+
+### Organization-Based Malice Selection
+
+**Solo Organization:**
+- Generate 3 malice features
+- MUST include Solo Action (5 Malice) - extra main action, usable even when dazed
+- Include one 10-malice ultimate ability
+- Generate 3 villain actions (☠️) - ONLY Solos and Leaders get villain actions
+
+**Leader Organization:**
+- Generate 2 malice features
+- Include team-buff effects
+- Generate 3 villain actions (☠️) - ONLY Solos and Leaders get villain actions
+
+**Platoon/Elite Organization:**
+- Generate 2 malice features
+- Include ally-benefit effects
+- **NO villain actions** - Villain Actions are for Leaders and Solos ONLY
+
+**Minion/Horde Organization:**
+- Generate 2 malice features
+- Features benefit the swarm/horde
+- Minions use shared malice (squad-based, not individual)
+- **NO villain actions** - Villain Actions are for Leaders and Solos ONLY
+
+### Critical Rule: Villain Actions Are Only for Leaders and Solos
+
+**STOP - Check Organization First:**
+- If organization is **Solo** → Generate 3 villain actions (☠️)
+- If organization is **Leader** → Generate 3 villain actions (☠️)
+- If organization is **Platoon, Elite, Minion, or Horde** → Generate 0 villain actions
+
+Villain Actions are special abilities that represent coordinated tactics and dramatic moments. They are inappropriate for simple minions, swarms, or standard platoon/elite creatures.
+
+### Villain Actions for Leaders and Solos
+
+Villain actions are special abilities only available to leaders and solos:
+
+**Usage Rules:**
+- Each villain action can be used only once per encounter
+- No more than one villain action per round
+- Used at the end of any other creature's turn (not start of monster's turn)
+
+**Villain Action Patterns:**
+
+**Villain Action 1 (Opener):**
+- Shows heroes they're not battling a typical creature
+- Options: damage, summon lackeys, buff leader, debuff heroes, or move into advantageous position
+- Example: "All [monster type] shift up to their speed and can make a free strike."
+
+**Villain Action 2 (Crowd Control):**
+- Helps villain regain upper hand after heroes respond
+- More powerful than Villain Action 1
+- Example: "Each target makes a [characteristic] test. Each target who fails is [condition]."
+
+**Villain Action 3 (Ultimate):**
+- Showstopper that deals a devastating blow
+- Designed to be used before the end of the battle
+- Example: "[Effect dealing major damage to all enemies]"
+
+### Malice Feature Examples
+
+**Solo Brute Example:**
+```
+☠️ Villain Action 1: "The [monster] takes an additional main action on their turn."
+☠️ Villain Action 2: "Each target makes a Might test. Each target who fails is pushed 3 and prone."
+☠️ Villain Action 3: "[Ultimate area attack with devastating damage]"
+```
+
+**Controller Malice Features:**
+- ⭐️ Team Insight (3 Malice): Each ally gains insight on their next attack
+- ❇️ Zone of Control (5 Malice): Difficult terrain in 3 squares
+- 🔳 Reality Warp (10 Malice): 4 cube within 10, each target makes a Reason test
+
+**Harrier Malice Features:**
+- ⭐️ Quick Step (3 Malice): All harriers shift up to speed
+- 🌀 Hit and Run (7 Malice): Each harrier shifts 3 and makes a free strike
+- ☠️ Encirclement (Villain Action 2): All enemies are surrounded
+
+### Level-Based Malice Tiers
+
+**Level 1+ Features:**
+- Costs: 3-7 Malice
+- Types: Basic attacks, buffs, minor environmental effects
+
+**Level 4+ Features:**
+- Generate one new malice feature
+- Monster has access to all Level 1+ features
+- Include "Prior Malice Features" feature that lists lower-level options
+
+**Level 7+ Features:**
+- Generate one new malice feature
+- Features may include encounter-wide effects
+- Access to all lower level features
+
+**Level 10+ Features:**
+- Generate one ultimate malice feature
+- Access to all malice features from all tiers
+
+### Triggered Action Malice Features
+
+Some monsters (like Kingfissure Worm) have malice features that can also be used as triggered actions:
+
+> "At the start of [monster]'s turn or when an action's trigger occurs, you can spend Malice to activate one of the following features:"
+
+### Malice Section in Stat Block Output
+
+When generating Markdown stat blocks, include a Malice section:
+
+```markdown
+<!-- -->
+> ☠️ **Malice Features**
+>
+> At the start of any [monster name]'s turn, you can spend Malice to activate one of the following features:
+>
+> <!-- -->
+> > ⭐️ **Brutal Effectiveness (3 Malice)**
+> >
+> > The monster's next ability with a potency has that potency increased by 1.
+>
+> <!-- -->
+> > 🗡️ **Malicious Strike (5+ Malice)**
+> >
+> > The monster's next strike deals extra damage equal to their highest characteristic.
+>
+> <!-- -->
+> > [Additional malice features based on organization - see rules above]
+```
+
+**Important - Only add Villain Actions for Leader/Solo organizations:**
+```markdown
+<!-- ONLY for Leader and Solo monsters: -->
+> <!-- -->
+> > ☠️ **Villain Action 1**
+> >
+> > [Effect description]
+>
+> <!-- -->
+> > ☠️ **Villain Action 2**
+> >
+> > [Effect description]
+>
+> <!-- -->
+> > ☠️ **Villain Action 3**
+> >
+> > [Effect description]
+```
+
+**For Platoon/Elite/Minion/Horde monsters - stop at malice features, do NOT add villain actions.**
+
 ## Additional Resources
 
 - **Templates:** [references/templates.md](references/templates.md) - Role archetypes and ability patterns
