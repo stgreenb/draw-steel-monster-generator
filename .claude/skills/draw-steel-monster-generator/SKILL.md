@@ -20,6 +20,80 @@ Generate Draw Steel TTRPG monsters that strictly conform to official MCDM stat b
 - `"Create a Level 3 Gremlin, Minion Harrier"`
 - `"Create a Level 5 Red Dragon, Solo Brute --format foundry"`
 - `"Create a Level 8 Lich, Solo Hexer --format both"`
+- `"Convert Scalathrax from Pathfinder 2e, Level 2 Elite Harrier --format foundry"`
+
+## Cross-System Monster Conversion
+
+You can create Draw Steel monsters inspired by creatures from other game systems (D&D 5e, Pathfinder, etc.). **Important: NEVER use stats from other systems - only use them for creative inspiration.**
+
+### Conversion Input Format
+
+**Basic conversion:**
+- `"Convert [Creature Name] from [System], [Level] [Organization] [Role]"`
+- `"Convert [Creature Name], [Level] [Organization] [Role]"`
+
+**Conversion with inspiration:**
+- `"Convert [Creature Name]: [pasted stat block or description] [options]"`
+
+**Examples:**
+- `"Convert Ancient Red Dragon from D&D 5e, Level 8 Solo Brute"`
+- `"Convert Beholder: [paste D&D beholder stat block] Level 7 Solo Controller"`
+- `"Convert Lich from Pathfinder, Level 6 Solo Hexer --format both"`
+
+### Conversion Rules (CRITICAL)
+
+**DO:**
+- Use creature name for theme/inspiration (fire dragon → fire keywords, dragon abilities)
+- Extract creature type for keywords (undead, construct, aberration)
+- Adapt ability concepts (fire breath → fire breath with Draw Steel damage)
+- Apply Draw Steel formulas for ALL numerical stats
+
+**DO NOT:**
+- Use HP, damage, or attack bonuses from source systems
+- Copy ability mechanics directly
+- Use CR/level from source to determine Draw Steel level
+- Reference source system mechanics (AC, saves, proficiency bonus)
+
+### What Gets Extracted from Source Material
+
+- **Theme:** Fire-breathing dragon → fire keywords and abilities
+- **Creature type:** Undead lich → undead keyword, death magic theme
+- **Ability concepts:** Fire breath → original fire breath ability using Draw Steel formulas
+- **Damage types:** Acid monster → acid damage in abilities
+- **Malice features:** For Elite/Leader/Solo organizations, generate 2-3 malice features inspired by creature theme
+
+### What Is Calculated Using Draw Steel Math
+
+- **Stamina:** `ceil(((10 × Level) + Role_Stamina_Modifier) × Organization_Modifier)`
+- **EV:** `ceil(((2 × Level) + 4) × Organization_Modifier)`
+- **Damage:** `ceil((4 + Level + Role_Damage_Modifier) × Tier_Modifier)`
+- **Characteristics:** Based on echelon (Level 1=+1, 2-4=+2, 5-7=+3, 8-10=+4)
+- **Free Strike:** Equal to Tier 1 damage
+- **Malice Features:** 2 for Elite/Leader, 3 for Solo (0 for Minion/Horde, see Step 9)
+
+### Output
+
+Conversion produces standard Draw Steel stat blocks:
+- Markdown format (default)
+- Foundry VTT JSON (with `--format foundry` or `--format both`)
+- Source noted as "Converted from [System]" in the stat block
+
+### Conversion Example: Scalathrax
+
+**Input:** `"Convert Scalathrax from Pathfinder 2e, Level 2 Elite Harrier --format foundry"`
+
+**Conversion process:**
+1. Extract theme: "slippery, scaly cave-dwelling horror with toxic oil"
+2. Keywords: beast (scalathrax isn't a valid keyword, use beast)
+3. Role: Harrier (mobile, hit-and-run tactics, climbing speed)
+4. Apply Draw Steel formulas:
+   - EV: ceil(((2×2)+4)×2.0) = 16
+   - Stamina: ceil(((10×2)+20)×2.0) = 100
+   - Damage T1: ceil((4+2+1)×0.6) = 5 → 7 with strike bonus
+5. Generate malice features (2 for Elite):
+   - Brutal Effectiveness (3 Malice): Increase next ability's potency
+   - Quick Shift (5 Malice): Shift speed and gain bonus to next attack
+6. Output Foundry VTT JSON with malice features as feature items
 
 ## Output Formats
 
