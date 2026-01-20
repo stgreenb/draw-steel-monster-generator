@@ -2,6 +2,8 @@
 
 Skill for generating Draw Steel TTRPG monsters with (optional) Foundry VTT JSON output. Compatible with Claude Code, OpenCode, and other LLM coding tools.
 
+Don't have an LLM tool? Browse available options at [AgentSkills.io](https://agentskills.io/).
+
 ## Quick Start
 
 ### Claude Code / OpenCode
