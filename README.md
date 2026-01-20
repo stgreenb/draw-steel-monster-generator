@@ -29,12 +29,15 @@ Don't have an LLM tool? Browse available options at [AgentSkills.io](https://age
 ## Project Structure
 
 ```
-.claude/skills/draw-steel-monster-generator/
-├── SKILL.md              # AI skill definition
-├── scripts/
-│   ├── generate_monster.py
-│   └── validate_foundry_json.py  # Foundry JSON validator
-└── output/               # Generated monsters
+.claude/
+├── commands/
+│   └── monster.md           # Slash command definition
+├── skills/draw-steel-monster-generator/
+│   ├── SKILL.md             # AI skill definition
+│   └── scripts/
+│       ├── generate_monster.py
+│       └── validate_foundry_json.py  # Foundry JSON validator
+└── output/                  # Generated monsters
 ```
 
 ## Validation (if Foundry Format is Requested)
