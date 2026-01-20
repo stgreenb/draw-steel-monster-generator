@@ -1,37 +1,27 @@
 # Draw Steel Monster Generator
 
-OpenCode skill for generating Draw Steel TTRPG monsters with Foundry VTT JSON output. Compatible with [AgentSkills.io](https://agentskills.io/) and other AI coding tools.
+Skill for generating Draw Steel TTRPG monsters with (optional) Foundry VTT JSON output. Compatible with Claude Code, OpenCode, and other LLM coding tools.
 
 ## Quick Start
 
 ### Claude Code / OpenCode
 
 1. Copy `.claude/skills/draw-steel-monster-generator/` to your skills directory
-2. Run: `opencode run "Create a Level 3 Griffin, Platoon, Harrier"`
-
-### Direct Usage
-
-```bash
-# Validate Foundry VTT JSON
-python scripts/validate_foundry_json.py output/Monsters
-
-# Validate single file
-python scripts/validate_foundry_json.py output/Monsters/griffin.json
-```
+2. Talk to your LLM using the example commands below
 
 ## What It Does
 
 - Generates Draw Steel monsters using official Monster Basics formulas
-- Creates Foundry VTT-ready JSON for import
-- Converts monsters from other systems (D&D 5e, Pathfinder, etc.)
-- Validates JSON against Foundry schema requirements
+- Converts monsters from other systems (D&D 5e, Pathfinder, etc.) - ignores source math, uses for inspiration only
+- Creates and validates Foundry VTT-ready JSON for import
 
 ## Example Commands
 
 ```
 "Create a Level 3 Griffin, Platoon, Harrier"
-"Convert Slaad from D&D 5e, Level 5, Solo, Controller"
+"Convert Slaad from D&D 5e, Level 5, Solo, Controller in foundry compatible json"
 "Create a swarm of 10 Level 1 Giant Rats, Horde, Ambusher"
+"Take this Pathfinder monster <insert monster block> and convert it to a level 3 elite in Draw Steel"
 ```
 
 ## Project Structure
@@ -45,7 +35,7 @@ python scripts/validate_foundry_json.py output/Monsters/griffin.json
 └── output/               # Generated monsters
 ```
 
-## Validation
+## Validation (if Foundry Format is Requested)
 
 The validator checks:
 - Valid ability/distance/monster keywords
