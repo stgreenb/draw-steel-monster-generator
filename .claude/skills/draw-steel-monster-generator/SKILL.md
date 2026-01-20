@@ -256,6 +256,10 @@ When generating Foundry VTT JSON, output a JSON object with this EXACT structure
 | Keywords lowercase: `["fey", "humanoid"]` | Keywords capitalized: `["Fey", "Humanoid"]` |
 | Keywords match distance type | "Melee" in keywords for ranged abilities |
 | `_id` = 16 alphanumeric chars | UUID like `d4e5f6a7-b8c9-0123-defa-456789012345` (36 chars) |
+| `resource: 3` (integer) for malice cost | `resource: {value: 3}` (object) |
+| `damageDisplay: ""` for area abilities | `damageDisplay: "area"` (invalid choice) |
+| Valid distance types: `burst`, `cube`, `line` | `cone` is NOT a valid area type in Draw Steel! |
+| Cone-like abilities use `cube` type | Using `cone` (not in official rules) for breath/spray |
 
 ### Self-Validation Checklist for Foundry VTT JSON (MANDATORY)
 
@@ -276,6 +280,12 @@ Before outputting JSON with `--format foundry` or `--format both`, verify ALL of
   - `abyssal`, `accursed`, `animal`, `beast`, `construct`, `dragon`, `elemental`, `fey`, `giant`, `horror`, `humanoid`, `infernal`, `plant`, `soulless`, `swarm`, `undead`
 - [ ] **Ability keywords:** All in ability `system.keywords` are valid:
   - `animal`, `animapathy`, `area`, `charge`, `chronopathy`, `cryokinesis`, `earth`, `fire`, `green`, `magic`, `melee`, `metamorphosis`, `psionic`, `pyrokinesis`, `ranged`, `resopathy`, `rot`, `performance`, `strike`, `telekinesis`, `telepathy`, `void`, `weapon`
+- [ ] **Distance types:** All abilities have valid `system.distance.type`:
+  - `melee`, `ranged`, `meleeRanged` (single target)
+  - `aura`, `burst`, `cube`, `line`, `wall`, `special` (area effects)
+  - `self` (self-target)
+  - **IMPORTANT:** "cone" is NOT a valid area type in Draw Steel rules!
+  - **Cone-like abilities (breath weapons, sprays):** Use `cube` type, not `cone` or `burst`
 - [ ] **Formula:** All `system.power.roll.formula` equal `"@chr"` (not `"@might"`, `"@agility"`, etc.)
 - [ ] **Keywords lowercase:** All keywords are lowercase (no `"Melee"`, `"Weapon"`, `"Humanoid"`)
 - [ ] **Power effects:** For generated abilities (heroic, signature, villain), `system.power.effects` is empty `{}`
@@ -485,7 +495,32 @@ Non-damaging abilities (buffs, movement, etc.) should use empty damageDisplay:
 
 // INCORRECT (don't use "melee" for non-damaging abilities):
 "damageDisplay": "melee"
+
+// INCORRECT ("area" is NOT a valid choice - will crash Foundry!):
+"damageDisplay": "area"
 ```
+
+**damageDisplay Valid Values:**
+- `"melee"` - for melee/strike abilities
+- `"ranged"` - for ranged abilities
+- `""` (empty) - for area abilities, self-target, or non-damaging abilities
+
+### Resource Cost for Malice-Spending Abilities
+
+Elite/Leader/Solo monsters should have at least one heroic ability that costs malice. Set `resource` to an integer:
+
+```json
+// CORRECT (heroic ability that costs 3 malice):
+"resource": 3
+
+// INCORRECT (resource should be integer, not object):
+"resource": {"value": 3}
+
+// For abilities that don't cost malice:
+"resource": null
+```
+
+**Critical:** Elite, Leader, and Solo monsters MUST have at least one ability with `resource: integer > 0`.
 
 ### Effect Types in `system.power.effects`
 - Damage effects → `"type": "damage"` with nested `damage: { tier1: {...}, tier2: {...}, tier3: {...} }`
@@ -1378,13 +1413,15 @@ All malice features activate at the start of the monster's turn:
 **Solo Organization:**
 - Generate 3 malice features
 - MUST include Solo Action (5 Malice) - extra main action, usable even when dazed
-- Include one 10-malice ultimate ability
 - Generate 3 villain actions (☠️) - ONLY Solos and Leaders get villain actions
+- Level 1-3: Villain actions should cost 5-7 Malice (no 10-Malice features!)
+- Level 4+: Can include 10-Malice ultimate villain action
 
 **Leader Organization:**
 - Generate 2 malice features
 - Include team-buff effects
 - Generate 3 villain actions (☠️) - ONLY Solos and Leaders get villain actions
+- Level 1-3: Villain actions should cost 5-7 Malice
 
 **Platoon/Elite Organization:**
 - Generate 2 malice features
@@ -1397,68 +1434,33 @@ All malice features activate at the start of the monster's turn:
 - Minions use shared malice (squad-based, not individual)
 - **NO villain actions** - Villain Actions are for Leaders and Solos ONLY
 
-### Critical Rule: Villain Actions Are Only for Leaders and Solos
+### ⚠️ Critical: Malice Costs by Level (Based on Official Draw Steel Content)
 
-**STOP - Check Organization First:**
-- If organization is **Solo** → Generate 3 villain actions (☠️)
-- If organization is **Leader** → Generate 3 villain actions (☠️)
-- If organization is **Platoon, Elite, Minion, or Horde** → Generate 0 villain actions
+**Level 1-3 Monsters:**
+- Malice features: 2-7 Malice
+- Villain actions: 5-7 Malice
+- **10 Malice features are NOT used in official level 1-3 content!**
+- Examples from Monsters book: Abyssal Rift (7), Dread March (7), Fodder Run (7)
 
-Villain Actions are special abilities that represent coordinated tactics and dramatic moments. They are inappropriate for simple minions, swarms, or standard platoon/elite creatures.
+**Level 4-6 Monsters:**
+- Malice features: 3-9 Malice
+- Villain actions: 5-9 Malice
+- Can include 9 Malice features
 
-### Villain Actions for Leaders and Solos
+**Level 7+ Monsters:**
+- Malice features: 3-10 Malice
+- Villain actions: 5-10 Malice
+- 10 Malice features appropriate for ultimate abilities
 
-Villain actions are special abilities only available to leaders and solos:
+**Solo Action:**
+- Always **5 Malice** (confirmed across all official solo monsters: Thorn Dragon, Xorannox, Werewolf, Manticore, Lich, etc.)
 
-**Usage Rules:**
-- Each villain action can be used only once per encounter
-- No more than one villain action per round
-- Used at the end of any other creature's turn (not start of monster's turn)
-
-**Villain Action Patterns:**
-
-**Villain Action 1 (Opener):**
-- Shows heroes they're not battling a typical creature
-- Options: damage, summon lackeys, buff leader, debuff heroes, or move into advantageous position
-- Example: "All [monster type] shift up to their speed and can make a free strike."
-
-**Villain Action 2 (Crowd Control):**
-- Helps villain regain upper hand after heroes respond
-- More powerful than Villain Action 1
-- Example: "Each target makes a [characteristic] test. Each target who fails is [condition]."
-
-**Villain Action 3 (Ultimate):**
-- Showstopper that deals a devastating blow
-- Designed to be used before the end of the battle
-- Example: "[Effect dealing major damage to all enemies]"
-
-### Malice Feature Examples
-
-**Solo Brute Example:**
-```
-☠️ Villain Action 1: "The [monster] takes an additional main action on their turn."
-☠️ Villain Action 2: "Each target makes a Might test. Each target who fails is pushed 3 and prone."
-☠️ Villain Action 3: "[Ultimate area attack with devastating damage]"
-```
-
-**Controller Malice Features:**
-- ⭐️ Team Insight (3 Malice): Each ally gains insight on their next attack
-- ❇️ Zone of Control (5 Malice): Difficult terrain in 3 squares
-- 🔳 Reality Warp (10 Malice): 4 cube within 10, each target makes a Reason test
-
-**Harrier Malice Features:**
-- ⭐️ Quick Step (3 Malice): All harriers shift up to speed
-- 🌀 Hit and Run (7 Malice): Each harrier shifts 3 and makes a free strike
-- ☠️ Encirclement (Villain Action 2): All enemies are surrounded
-
-### Level-Based Malice Tiers
-
-**Level 1+ Features:**
-- Costs: 3-7 Malice
-- Types: Basic attacks, buffs, minor environmental effects
-
-**Level 4+ Features:**
-- Generate one new malice feature
+**Examples for Level 1 Solo:**
+- Brutal Effectiveness (3 Malice)
+- Solo Action (5 Malice) - ALWAYS 5!
+- Villain Action 1 (5-7 Malice) - opener
+- Villain Action 2 (5-7 Malice) - crowd control
+- Villain Action 3 (5-7 Malice) - devastating but NOT 10!
 - Monster has access to all Level 1+ features
 - Include "Prior Malice Features" feature that lists lower-level options
 

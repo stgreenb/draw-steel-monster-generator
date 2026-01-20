@@ -58,7 +58,8 @@ VALID_ABILITY_KEYWORDS = {
     "weapon",
 }
 
-# Valid monster roles
+# Valid monster roles (from Monster Basics.md)
+# Note: "leader" and "solo" are organizations, but official content also uses them as roles
 VALID_MONSTER_ROLES = {
     "ambusher",
     "artillery",
@@ -69,11 +70,26 @@ VALID_MONSTER_ROLES = {
     "hexer",
     "mount",
     "support",
-    "solo",
+    "leader",  # Also an organization, used as role in official content
+    "solo",  # Also an organization, used as role in official content
 }
 
 # Valid monster organizations
 VALID_MONSTER_ORGANIZATIONS = {"minion", "horde", "platoon", "elite", "leader", "solo"}
+
+# Valid ability distance types (from Draw Steel module config.mjs)
+VALID_ABILITY_DISTANCES = {
+    "melee",
+    "ranged",
+    "meleeRanged",
+    "aura",
+    "burst",
+    "cube",
+    "line",
+    "wall",
+    "special",
+    "self",
+}
 
 # Valid ability types
 VALID_ABILITY_TYPES = {
@@ -241,6 +257,53 @@ def validate_ability_keywords(data: dict, result: ValidationResult) -> None:
                     )
 
 
+def validate_feature_keywords(data: dict, result: ValidationResult) -> None:
+    """
+    Validate that feature items don't have combat keywords.
+
+    Features should have empty keyword arrays. Combat keywords are only for abilities.
+    If a feature has any keywords, it's likely a mistake.
+    """
+    items = data.get("items", [])
+
+    for item in items:
+        if item.get("type") == "feature":
+            system = item.get("system", {})
+            keywords = system.get("keywords", [])
+
+            if keywords:  # Features should have empty keyword arrays
+                result.add_error(
+                    f"Feature '{item.get('name', 'Unknown')}' has keywords {keywords}. "
+                    f"Features should have empty keyword arrays, not combat keywords."
+                )
+
+
+def validate_ability_distance(data: dict, result: ValidationResult) -> None:
+    """Validate that ability distance types are valid.
+
+    According to Draw Steel module schema (config.mjs), valid distance types are:
+    - melee, ranged, meleeRanged (single target)
+    - aura, burst, cube, line, wall, special (area)
+    - self (self-target)
+
+    Using an invalid distance type (like "cone") will crash Foundry when rendering the sheet.
+    """
+    items = data.get("items", [])
+
+    for item in items:
+        if item.get("type") == "ability":
+            system = item.get("system", {})
+            distance = system.get("distance", {})
+            distance_type = distance.get("type", "")
+
+            if distance_type and distance_type not in VALID_ABILITY_DISTANCES:
+                result.add_error(
+                    f"Ability '{item.get('name', 'Unknown')}' has invalid distance type '{distance_type}'. "
+                    f"Must be one of: {', '.join(sorted(VALID_ABILITY_DISTANCES))}. "
+                    f"'cone' is NOT valid - use 'burst' or 'special' instead."
+                )
+
+
 def validate_id_format(data: dict, result: ValidationResult, path: str = "") -> None:
     """Validate that all _id fields are exactly 16 alphanumeric characters."""
     if isinstance(data, dict):
@@ -364,6 +427,217 @@ def validate_html_entities(data: dict, result: ValidationResult) -> None:
                 )
 
 
+def validate_damage_display(data: dict, result: ValidationResult) -> None:
+    """Validate that damageDisplay is properly set for abilities.
+
+    According to Draw Steel module schema (ability.mjs), damageDisplay only accepts:
+    - "melee" - for abilities with melee/strike keywords
+    - "ranged" - for abilities with ranged keyword
+    - "" (empty string) - for area abilities or abilities without combat keywords
+
+    Note: "area" is NOT a valid choice - Foundry will crash if you set it.
+    """
+    items = data.get("items", [])
+    valid_damage_displays = {"melee", "ranged", ""}
+
+    for item in items:
+        if item.get("type") == "ability":
+            system = item.get("system", {})
+            category = system.get("category", "")
+            keywords = set(system.get("keywords", []))
+            damage_display = system.get("damageDisplay", "")
+
+            # Check if damageDisplay is valid
+            if damage_display not in valid_damage_displays:
+                result.add_error(
+                    f"Ability '{item.get('name', 'Unknown')}' has invalid damageDisplay '{damage_display}'. "
+                    f"Must be one of: {', '.join(sorted(valid_damage_displays))} (not 'area')"
+                )
+
+            # For signature/heroic abilities, warn about potentially incorrect damageDisplay
+            if category in ("signature", "heroic"):
+                has_melee = "melee" in keywords
+                has_ranged = "ranged" in keywords
+                has_strike = "strike" in keywords
+                has_area = "area" in keywords
+
+                # Melee/strike abilities should have damageDisplay = "melee"
+                if (has_melee or has_strike) and not has_ranged and not has_area:
+                    if damage_display not in ("melee", ""):
+                        result.add_warning(
+                            f"Ability '{item.get('name', 'Unknown')}' has melee/strike keywords but damageDisplay='{damage_display}'. "
+                            f"Consider setting damageDisplay to 'melee' or '' for area abilities."
+                        )
+
+                # Ranged abilities should have damageDisplay = "ranged"
+                if has_ranged and not has_melee and not has_area:
+                    if damage_display != "ranged":
+                        result.add_warning(
+                            f"Ability '{item.get('name', 'Unknown')}' has ranged keyword but damageDisplay='{damage_display}'. "
+                            f"Consider setting damageDisplay to 'ranged'."
+                        )
+
+                # Area abilities should have damageDisplay = "" (empty string)
+                if has_area and not has_melee and not has_ranged:
+                    if damage_display != "":
+                        result.add_warning(
+                            f"Ability '{item.get('name', 'Unknown')}' has area keyword but damageDisplay='{damage_display}'. "
+                            f"Area abilities must use damageDisplay='' (empty string), not 'area'. "
+                            f"'area' is NOT a valid choice and will cause Foundry to crash."
+                        )
+
+
+def validate_malice_resource(data: dict, result: ValidationResult) -> None:
+    """Validate that Elite/Leader/Solo monsters have at least one ability that costs malice.
+
+    In Draw Steel, monsters can spend malice (tracked as 'resource' in Foundry) on abilities.
+    Elite, Leader, and Solo monsters should have at least one ability with a resource cost
+    so they can utilize the malice system effectively.
+
+    According to the Foundry module schema, resource is a NumberField (integer), not an object.
+    """
+    system = data.get("system", {})
+    monster = system.get("monster", {})
+    org = monster.get("organization", "")
+    items = data.get("items", [])
+
+    # Only check Elite, Leader, and Solo organizations
+    if org not in ("elite", "leader", "solo"):
+        return
+
+    # Check if any ability has a resource cost (resource is an integer > 0)
+    has_malice_ability = False
+    for item in items:
+        if item.get("type") == "ability":
+            system_data = item.get("system", {})
+            resource = system_data.get("resource", None)
+
+            # Resource should be an integer, not an object
+            if isinstance(resource, int) and resource > 0:
+                has_malice_ability = True
+                break
+            elif isinstance(resource, dict):
+                result.add_error(
+                    f"Ability '{item.get('name', 'Unknown')}' has resource as object {{value: {resource.get('value')}}}. "
+                    f"Resource must be an integer, not an object."
+                )
+
+    if not has_malice_ability:
+        result.add_error(
+            f"Monster with '{org}' organization must have at least one ability that costs malice "
+            f"(resource: integer > 0). Elite/Leader/Solo monsters should have malice-spending abilities."
+        )
+
+
+def validate_villain_actions(data: dict, result: ValidationResult) -> None:
+    """Validate that Leader and Solo monsters have exactly 3 villain actions.
+
+    According to Draw Steel monster design rules:
+    - Solo monsters must have 3 villain actions
+    - Leader monsters must have 3 villain actions
+    - Platoon, Elite, Minion, and Horde monsters should NOT have villain actions
+
+    Villain actions have system.type = "villain" and typically have resource costs.
+    """
+    system = data.get("system", {})
+    monster = system.get("monster", {})
+    org = monster.get("organization", "")
+    items = data.get("items", [])
+
+    # Only check Leader and Solo organizations
+    if org not in ("leader", "solo"):
+        return
+
+    # Count villain actions (abilities with type = "villain")
+    villain_actions = []
+    for item in items:
+        if item.get("type") == "ability":
+            system_data = item.get("system", {})
+            if system_data.get("type") == "villain":
+                villain_actions.append(item.get("name", "Unknown"))
+
+    if len(villain_actions) != 3:
+        result.add_error(
+            f"Monster with '{org}' organization must have exactly 3 villain actions (abilities with type='villain'). "
+            f"Found {len(villain_actions)}: {villain_actions}. "
+            f"Villain actions are special abilities used once per encounter at the end of any other creature's turn."
+        )
+
+
+def validate_malice_costs(data: dict, result: ValidationResult) -> None:
+    """Validate that malice feature costs are appropriate for the monster's level.
+
+    Low-level monsters (especially level 1-3) should not have extremely expensive malice features.
+    Based on official Draw Steel monster design patterns:
+    - Level 1-3: Most malice features should cost 3-5, with 7 being expensive
+    - Level 4-6: Can have 7-10 range
+    - Level 7-9: Full range available
+    - Level 10+: Can include ultimate 10+ features
+
+    A 10-malice feature on a level 1 monster is unusually expensive and likely a design error.
+    """
+    system = data.get("system", {})
+    monster = system.get("monster", {})
+    level = monster.get("level", 0)
+    org = monster.get("organization", "")
+    items = data.get("items", [])
+
+    # For Solo/Leader monsters, check malice feature costs
+    if org not in ("leader", "solo"):
+        return
+
+    # Define max reasonable malice cost by level (based on official Draw Steel content)
+    # Level 1-3: Official features max at 7 Malice (even for major abilities)
+    # Level 4-6: Can have 7-9 Malice
+    # Level 7+: Full 10 Malice range available
+    max_reasonable_by_level = {
+        1: 7,
+        2: 7,
+        3: 7,
+        4: 9,
+        5: 9,
+        6: 9,
+        7: 10,
+        8: 10,
+        9: 12,
+        10: 15,
+    }
+    max_reasonable = max_reasonable_by_level.get(level, 15)
+
+    # Check malice feature costs (features with "Malice X" in effect text)
+    for item in items:
+        if item.get("type") == "feature":
+            system_data = item.get("system", {})
+            effect = system_data.get("effect", {})
+            if isinstance(effect, dict):
+                before = effect.get("before", "")
+                # Look for "Malice N" pattern in the effect text
+                import re
+
+                malice_matches = re.findall(r"Malice\s+(\d+)", before, re.IGNORECASE)
+                for malice_cost in malice_matches:
+                    cost = int(malice_cost)
+                    if cost > max_reasonable:
+                        result.add_warning(
+                            f"Feature '{item.get('name', 'Unknown')}' costs {cost} Malice, "
+                            f"but max reasonable for level {level} is {max_reasonable}. "
+                            f"Based on official Draw Steel content, level 1-3 features should max at 7 Malice."
+                        )
+
+    # Also check villain action costs (abilities with type="villain")
+    for item in items:
+        if item.get("type") == "ability":
+            system_data = item.get("system", {})
+            if system_data.get("type") == "villain":
+                resource = system_data.get("resource", 0)
+                if isinstance(resource, int) and resource > max_reasonable:
+                    result.add_warning(
+                        f"Villain Action '{item.get('name', 'Unknown')}' costs {resource} Malice, "
+                        f"but max reasonable for level {level} is {max_reasonable}. "
+                        f"Official Draw Steel solo monsters at level 1-3 have villain actions at 5-7 Malice, not 10."
+                    )
+
+
 def validate_required_fields(data: dict, result: ValidationResult) -> None:
     """Validate required actor fields are present and valid."""
     system = data.get("system", {})
@@ -475,6 +749,8 @@ def validate_json_file(filepath: str) -> ValidationResult:
     validate_monster_organization(data, result)
     validate_monster_keywords(data, result)
     validate_ability_keywords(data, result)
+    validate_feature_keywords(data, result)
+    validate_ability_distance(data, result)
     validate_id_format(data, result)
     validate_formula_syntax(data, result)
     validate_keywords_lowercase(data, result)
@@ -482,6 +758,10 @@ def validate_json_file(filepath: str) -> ValidationResult:
     validate_html_entities(data, result)
     validate_required_fields(data, result)
     validate_token_config(data, result)
+    validate_damage_display(data, result)
+    validate_malice_resource(data, result)
+    validate_villain_actions(data, result)
+    validate_malice_costs(data, result)
 
     return result
 
